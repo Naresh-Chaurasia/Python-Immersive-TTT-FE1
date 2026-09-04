@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  accounts_server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.accounts
+    container_name: bankforge_accounts
+    environment:
+      - LOG_LEVEL=DEBUG
+      - NEOBANK_DB_PATH=/app/data/neobank.db
+    ports:
+      - "8001:8001"
+      - "8011:8011"
+    volumes:
+      - neobank_data:/app/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8011/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bankforge_net
+
+  products_server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.products
+    container_name: bankforge_products
+    environment:
+      - LOG_LEVEL=DEBUG
+      - NEOBANK_DB_PATH=/app/data/neobank.db
+    ports:
+      - "8002:8002"
+      - "8012:8012"
+    volumes:
+      - neobank_data:/app/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8012/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bankforge_net
+    depends_on:
+      accounts_server:
+        condition: service_healthy
+
+  compliance_comms_server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.compliance_comms
+    container_name: bankforge_compliance_comms
+    environment:
+      - LOG_LEVEL=DEBUG
+      - NEOBANK_DB_PATH=/app/data/neobank.db
+    ports:
+      - "8003:8003"
+      - "8013:8013"
+    volumes:
+      - neobank_data:/app/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8013/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bankforge_net
+    depends_on:
+      accounts_server:
+        condition: service_healthy
+
+volumes:
+  neobank_data:
+
+networks:
+  bankforge_net:
+    driver: bridge

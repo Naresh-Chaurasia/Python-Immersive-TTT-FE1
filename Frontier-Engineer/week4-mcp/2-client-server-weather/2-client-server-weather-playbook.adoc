@@ -1,0 +1,36 @@
+= 2 Client Server Weather
+:toc: right
+
+----
+
+# Initialize a new Python project and create pyproject.toml
+uv init                      
+
+
+# Create a virtual environment (.venv)
+uv venv                      
+
+
+# Install the MCP package with CLI extras
+uv add "mcp[cli]"            
+
+# Run the MCP server defined in server.py
+mcp run server.py            
+
+# Start the MCP development environment for server.py. 
+# This comes with Inspector UI for debugging and monitoring
+mcp dev server.py            
+
+# Run the MCP server from a specific project directory
+# uv automatically:
+# Finds the project's virtual environment.
+# Uses dependencies from pyproject.toml.
+# Executes mcp inside that environment.
+# Does not require manually activating .venv.
+
+uv run --directory /path/to/project mcp run server.py
+
+# Install/register weather.py as an MCP server in claude.
+mcp install weather.py       
+
+----

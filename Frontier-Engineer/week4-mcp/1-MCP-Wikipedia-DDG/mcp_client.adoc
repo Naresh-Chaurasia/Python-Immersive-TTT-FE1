@@ -1,0 +1,187 @@
+= MCP - Client Server Communication
+:toc: right
+
+> PENDING
+
+Yes — `client.get_tools()` performs *real network round-trips over HTTP* to your MCP server.
+
+Since no `session` was passed (you're using `client.get_tools()` at the top level, not a pre-opened session), `load_mcp_tools()` internally does:
+
+[source,python]
+----
+async with create_session(connection) as tool_session:
+    await tool_session.initialize()
+    tools = await _list_all_tools(tool_session)
+----
+
+That means it *opens a brand new Streamable-HTTP session, initializes the MCP protocol handshake, lists tools, then tears the session down* — all in one call.
+
+== What the HTTP Logs Mean
+
+Your logs map exactly to those steps:
+
+[cols="1,3", options="header"]
+|===
+| Log line | What's actually happening
+
+| `HTTP Request: POST .../mcp "200 OK"`
+| The `initialize` request — MCP handshake, negotiating protocol version/capabilities.
+
+| `Received session ID: 788ed64b...`
+| Server assigns a session ID for this Streamable-HTTP connection.
+
+| `Negotiated protocol version: 2025-11-25`
+| Client/server agree on MCP protocol version.
+
+| `HTTP Request: GET .../mcp "200 OK"`
+| Client opens the SSE/streaming GET channel for server-to-client messages.
+
+| `HTTP Request: POST .../mcp "202 Accepted"`
+| Client sends the `initialized` notification (fire-and-forget, hence `202`).
+
+| `HTTP Request: POST .../mcp "200 OK"`
+| The actual `tools/list` request — this is what returns `wikipedia_search` / `ddg_search`.
+
+| `HTTP Request: DELETE .../mcp "200 OK"`
+| Client closes/terminates the session cleanly since it was a one-off, ad-hoc session (not persisted).
+|===
+
+So *5 real HTTP requests* happen inside that single `await client.get_tools()` call:
+
+[source,text]
+----
+initialize
+    ↓
+GET (stream)
+    ↓
+initialized notification
+    ↓
+tools/list
+    ↓
+DELETE (session teardown)
+----
+
+== Important Implication for Your App
+
+Because `MultiServerMCPClient.get_tools()` doesn't keep the session open, *every time it's called it re-does the full handshake + list + teardown*.
+
+It does *not* reuse a persistent connection.
+
+In your `mcp_client.py`, this happens once at module load:
+
+[source,python]
+----
+# Top-level code
+
+tools = await client.get_tools()
+----
+
+This code is outside:
+
+[source,python]
+----
+if task:
+    ...
+----
+
+Therefore, on every *Streamlit rerun* — which happens on every widget interaction, including just typing in the text box — it re-executes this entire handshake again.
+
+This is expected in this simple script pattern, but it is worth knowing:
+
+[IMPORTANT]
+====
+`client.get_tools()` is a real network operation. It is not a cached or local lookup.
+====
+
+The sequence is:
+
+[source,text]
+----
+Streamlit interaction
+        ↓
+Streamlit rerun
+        ↓
+mcp_client.py executes
+        ↓
+client.get_tools()
+        ↓
+Create MCP HTTP session
+        ↓
+Initialize MCP protocol
+        ↓
+List available tools
+        ↓
+Close MCP session
+----
+
+== Optimization
+
+If you want to optimize this behavior, you can use `st.cache_resource` to avoid re-fetching tools on every Streamlit rerun.
+
+Another option is to *keep a persistent MCP session open for the lifetime of the application*.
+
+For example:
+
+[source,python]
+----
+@st.cache_resource
+def get_mcp_tools():
+    return client.get_tools()
+----
+
+The goal is to avoid repeatedly performing:
+
+[source,text]
+----
+Create session
+    ↓
+Initialize
+    ↓
+List tools
+    ↓
+Delete session
+----
+
+on every Streamlit rerun.
+
+== Summary
+
+[cols="1,2", options="header"]
+|===
+| Concept | Meaning
+
+| `client.get_tools()`
+| Fetches the available tools from the MCP server.
+
+| HTTP connection
+| A real network connection is established.
+
+| `initialize`
+| Performs the MCP protocol handshake.
+
+| `tools/list`
+| Retrieves the tools exposed by the MCP server.
+
+| `DELETE`
+| Terminates the temporary MCP session.
+
+| Streamlit rerun
+| Can cause `get_tools()` to execute again.
+
+| `st.cache_resource`
+| Can help avoid repeatedly fetching the tools.
+
+| Persistent session
+| Can keep the MCP connection/session alive instead of recreating it.
+|===
+
+== Key Takeaway
+
+[IMPORTANT]
+====
+`client.get_tools()` is *not just reading a local list of tools*.
+
+With Streamable HTTP, it involves creating an MCP session, performing the MCP handshake, requesting the available tools, and finally closing the session.
+
+Therefore, calling it repeatedly can result in repeated HTTP network traffic.
+====

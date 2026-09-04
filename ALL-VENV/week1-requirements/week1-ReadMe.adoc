@@ -1,0 +1,196 @@
+= Setting Up a Virtual Environment on MAC/Linux/Windows for Jupyter Notebooks for Week 1 Introduction
+:author: Youvaraja Sundararaman
+:doctype: book
+:icons: font
+:revdate: {docdate}
+:revnumber: 1.0
+:revremark: First Edition
+:sectnumlevels: 2
+:sectnums: 5
+:source-highlighter: highlight.js
+:toc: right
+:toclevels: 5
+
+== MAC/Linux/Windows
+
+This guide walks through creating a Python virtual environment for the Week 1 Introduction notebooks/scripts and registering it as a Jupyter kernel in VS Code or Jupyter.
+
+##############################################
+
+---
+
+=== Prerequisites
+
+Check your Python version first:
+
+[source,bash]
+----
+# Mac/Linux
+python3 --version
+----
+
+[source,powershell]
+----
+# Windows (PowerShell or Command Prompt)
+python --version
+----
+
+If you already have a recent Python 3.x (e.g. 3.11+), you can use what's already on your system.
+
+=== Create the Virtual Environment
+
+Navigate to your project folder and create the environment:
+
+[source,bash]
+----
+# Mac/Linux
+cd ~/path/to/week1
+python3 -m venv .venv_fe-01-week1
+source .venv_fe-01-week1/bin/activate
+python -m pip install --upgrade pip
+----
+
+##############################################
+
+---
+
+[source,powershell]
+----
+# Windows (PowerShell)
+cd C:\path\to\week1
+python -m venv .venv_fe-01-week1
+.venv_fe-01-week1\Scripts\activate
+python -m pip install --upgrade pip
+----
+
+##############################################
+
+---
+
+[source,bat]
+----
+:: Windows (Command Prompt / cmd.exe)
+cd C:\path\to\week1
+python -m venv .venv_fe-01-week1
+.venv_fe-01-week1\Scripts\activate.bat
+python -m pip install --upgrade pip
+----
+
+NOTE: On Windows PowerShell, if you get an error about execution policies when activating, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first, then retry activation.
+
+Your terminal prompt should now be prefixed with `(.venv_fe-01-week1)`, confirming the environment is active.
+
+To deactivate later:
+
+[source,bash]
+----
+# Mac/Linux
+deactivate
+----
+
+[source,powershell]
+----
+# Windows (PowerShell or Command Prompt)
+deactivate
+----
+
+##############################################
+
+---
+
+=== Install Dependencies
+
+The `week1-1-Introduction-requirements.txt` file contains:
+
+[source,text]
+----
+python-dotenv
+anthropic
+pydantic
+langchain
+langchain-anthropic
+numpy
+----
+
+Then install:
+
+[source,bash]
+----
+# Mac/Linux
+pip install -r week1-requirements/week1-1-Introduction-requirements.txt
+----
+
+[source,powershell]
+----
+# Windows (PowerShell or Command Prompt)
+pip install -r week1-requirements/week1-1-Introduction-requirements.txt
+----
+
+##############################################
+
+---
+
+=== Register the Jupyter Kernel
+
+Install `ipykernel` and register the environment as a named Jupyter kernel:
+
+[source,bash]
+----
+# Mac/Linux
+python -m pip install ipykernel
+python -m ipykernel install --user --name Python-week1 --display-name "Introduction (Week 1)"
+----
+
+[source,powershell]
+----
+# Windows (PowerShell or Command Prompt)
+python -m pip install ipykernel
+python -m ipykernel install --user --name Python-week1 --display-name "Introduction (Week 1)"
+----
+
+This makes the environment selectable inside VS Code or Jupyter under the display name *Introduction (Week 1)*.
+
+To confirm registration or remove it later:
+
+[source,bash]
+----
+# Mac/Linux
+
+# Lists all Jupyter kernels registered on the system, with their names and install paths
+jupyter kernelspec list
+
+# Deletes the kernel named "Python-week1" without a confirmation prompt (-f = force)
+jupyter kernelspec remove Python-week1 -f
+----
+
+[source,powershell]
+----
+:: Windows (PowerShell or Command Prompt)
+
+:: Lists all Jupyter kernels registered on the system, with their names and install paths
+jupyter kernelspec list
+
+:: Deletes the kernel named "Python-week1" without a confirmation prompt (-f = force)
+jupyter kernelspec remove Python-week1 -f
+----
+
+##############################################
+
+---
+
+=== Run the Notebooks
+
+==== Option A — VS Code
+
+. Open the project folder in VS Code
+. Open any `.ipynb` file
+. Click the kernel picker (top right) and select *Introduction (Week 1)*
+. Run cells as usual
+
+==== Option B — Jupyter directly
+
+[source,bash]
+----
+# Mac/Linux/Windows
+jupyter notebook
+----

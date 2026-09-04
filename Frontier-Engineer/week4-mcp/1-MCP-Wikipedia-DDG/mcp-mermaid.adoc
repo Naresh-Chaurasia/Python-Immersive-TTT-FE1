@@ -1,0 +1,26 @@
+[mermaid]
+....
+flowchart LR
+    U[User] -->|Interacts with| H[MCP Host]
+    H <-->|Contains functionality| C[MCP Client]
+
+    C -->|MCP Protocol| SA[MCP Server A]
+    C -->|MCP Protocol| SB[MCP Server B]
+    C -->|MCP Protocol| SC[MCP Server C]
+
+    SA <-->|Web APIs or local functions| PA[Tool / App / Local Data / Process A]
+    SB <-->|Web APIs or local functions| PB[Tool / App / Local Data / Process B]
+    SC <-->|Web APIs or local functions| PC1[Tool / App / Local Data / Process C1]
+    SC <-->|Web APIs or local functions| PC2[Tool / App / Local Data / Process C2]
+
+    style U fill:#F2A63C,stroke:#333,color:#000
+    style H fill:#F2A63C,stroke:#333,color:#000
+    style C fill:#7FBF5F,stroke:#333,color:#000
+    style SA fill:#7FBF5F,stroke:#333,color:#000
+    style SB fill:#7FBF5F,stroke:#333,color:#000
+    style SC fill:#7FBF5F,stroke:#333,color:#000
+    style PA fill:#F2A63C,stroke:#333,color:#000
+    style PB fill:#F2A63C,stroke:#333,color:#000
+    style PC1 fill:#F2A63C,stroke:#333,color:#000
+    style PC2 fill:#F2A63C,stroke:#333,color:#000
+....

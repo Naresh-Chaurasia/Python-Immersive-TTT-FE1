@@ -1,0 +1,4 @@
+# Week 0 — Baseline
+# No third-party packages required. Everything in this week's notebooks uses only the
+# Python standard library, deliberately — Week 0 is meant to be runnable with nothing
+# more than a base Python 3.10+ install.

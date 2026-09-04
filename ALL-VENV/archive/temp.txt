@@ -1,0 +1,1 @@
+python -m ipykernel install --user --name=.venv_ed_donner --display-name "Python (.venv_ed_donner)"

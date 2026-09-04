@@ -1,0 +1,202 @@
+= TTT - Code Tracker
+:author: Naresh Chaurasia
+:doctype: book
+:icons: font
+:revdate: {docdate}
+:revnumber: 1.0
+:revremark: First Edition
+:sectnumlevels: 5
+:sectnums: 5
+:source-highlighter: highlight.js
+:toc: right
+:toclevels: 5
+
+
+== Week1
+
+.Week1
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 001-Token-Mechanics.adoc
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+
+== Week2
+
+.2-vector-db/1-embeddings
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 1_dummy_embedding.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 2_SentenceTransformer.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 2_Word2Vec_embeddings.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+.2-vector-db/2-faiss_annoy_pinecone
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 1_vector_db_fiass.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 3_vector_db_faiss_annoy.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+.2-vector-db/3-vectors_search-na
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 1_para_search.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 1_para_search2.ipynb
+a|
+- [ ] Copy with inline comments and markdown explanations
+a|
+- [ ] ToDo
+
+|===
+
+.3-RAG-Pipeline
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 1_website_chatbot.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 2_memory_based.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 3_csv_bot.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+.4-Advanced-RAG
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 1_query-expansion.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 2-multi-vector-todo.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+.9-Claude
+[cols="1,1,1"]
+|===
+| Topics | Details | Comment
+
+| 001-Embeddings-HuggingFace.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 001-Embeddings-openai.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| 002-Ragas-Setup.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-03_ingestion_chunking.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-04_vector_database.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-05_rag_chain.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-06_query_expansion.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-07_memory_multiturn.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+| NB-08_complete_solution.ipynb
+a|
+- [ ] ToDo
+a|
+- [ ] ToDo
+
+|===
+
+
+##############################################

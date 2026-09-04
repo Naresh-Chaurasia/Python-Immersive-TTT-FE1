@@ -1,0 +1,151 @@
+= Enterprise RAG: Executive Overview
+:author: Naresh Chaurasia
+:doctype: article
+:icons: font
+:revdate: {docdate}
+:revnumber: 1.0
+:revremark: Executive summary for management review — see 0-enterprise-rag.adoc for full technical design
+:sectnumlevels: 3
+:sectnums:
+:toc: right
+:toclevels: 2
+
+== Executive Summary
+
+The **Company Knowledge Assistant** is an AI-powered search and Q&A tool that lets employees ask plain-English questions and get accurate answers instantly from internal company documents — policies, handbooks, FAQs, guides, and announcements — instead of manually searching through folders or asking HR/IT.
+
+A working proof-of-concept has been built and validated. This document summarizes the business case and the plan to evolve it into a secure, reliable, enterprise-wide service running on AWS, and requests approval to proceed with the phased rollout.
+
+== The Business Problem
+
+* Employees spend significant time searching for answers to routine questions (PTO policy, VPN setup, expense rules, benefits, IT procedures).
+* Answers are scattered across PDFs, Word documents, and wikis, often outdated or inconsistent.
+* HR, IT, and management fields the same repetitive questions again and again, taking time away from higher-value work.
+
+== The Solution
+
+An internal chat-style assistant that:
+
+* Answers questions **instantly**, in natural language, 24/7.
+* Always cites the **source document** so answers are trustworthy and verifiable.
+* Automatically prefers the **most up-to-date policy** when documents conflict.
+* Can be scoped so employees only see documents relevant/authorized for their role (e.g., general staff vs. HR-only content).
+
+== Why Move to Enterprise-Wide Now
+
+The current version is a proof-of-concept running on a single laptop/server. It has proven the concept works, but it is **not yet safe or reliable enough for company-wide use**. Specifically:
+
+[cols="1,3", options="header"]
+|===
+| Concern | Current Limitation
+
+| Security
+| No login required — anyone with network access could use it or see confidential answers.
+
+| Reliability
+| Runs on one machine; if it goes down, the assistant is unavailable with no backup.
+
+| Data Protection
+| Sensitive company documents (HR handbooks, salary/policy data) are not screened for private information before being indexed.
+
+| Compliance
+| No audit trail of who asked what, and no formal data-retention or access policy.
+
+| Scale
+| Not built to support the whole company querying it at once.
+|===
+
+== The Plan: Moving to Production on AWS
+
+We propose migrating the assistant onto **Amazon Web Services (AWS)**, the enterprise's standard cloud platform, with a strong focus on **security and compliance** from day one.
+
+=== What Changes
+
+* **Single sign-on (SSO)** — employees log in with their existing company credentials; no separate passwords.
+* **Role-based access** — employees only see answers sourced from documents they're authorized to view (e.g., all-staff vs. HR-only).
+* **Enterprise-grade infrastructure** — redundant servers and databases so the service stays available even if one component fails.
+* **Data encryption** — all company documents and chat data encrypted, both stored and in transit.
+* **Full audit trail** — every question, answer, and administrative action is logged for compliance and security review.
+* **Sensitive-data screening** — documents are scanned for personal/confidential information before being made searchable.
+
+=== What Stays the Same
+
+* The core AI technology (question-answering engine) that has already been built and tested.
+* The document categories already in use (policies, guides, FAQs, handbooks, announcements).
+* The simple, chat-style user experience.
+
+=== Architecture at a Glance
+
+[source]
+----
+ Employee ──► Company Login (SSO) ──► Knowledge Assistant (AWS)
+                                            │
+                              ┌─────────────┼──────────────┐
+                              ▼             ▼              ▼
+                        Document Store  AI Search &     Access Rules
+                        (encrypted)     Answer Engine   (by role)
+----
+
+A simplified view of the underlying components (for technical readers):
+
+[cols="1,2", options="header"]
+|===
+| Layer | Technology
+
+| Hosting
+| Amazon EKS (Kubernetes) — auto-scaling, redundant application servers
+
+| Document/Answer Storage
+| Amazon RDS (PostgreSQL + pgvector) — encrypted, multi-availability-zone
+
+| Identity
+| Enterprise SSO (OIDC/Azure AD/Okta) + role-based access control
+
+| AI Models
+| OpenAI (answer generation) + Cohere (relevance ranking), with Amazon Bedrock as an in-house alternative under evaluation
+|===
+
+
+== Rollout Plan (High Level)
+
+[cols="1,3", options="header"]
+|===
+| Phase | What Happens
+
+| 1. Security Hardening
+| Lock down the current version — add login, remove exposed credentials, fix known issues — as an immediate safety measure.
+
+| 2. Cloud Foundation
+| Stand up the secure, redundant AWS infrastructure (servers, database, storage).
+
+| 3. Access Control & Compliance
+| Connect company login (SSO), set up role-based document access, enable audit logging, and screen documents for sensitive data.
+
+| 4. Reliability Testing
+| Test failover and backup/recovery so the service can survive outages without data loss.
+
+| 5. Company-Wide Rollout
+| Open access to all employees, with usage monitoring and cost controls in place.
+|===
+
+Estimated timeline: **~4-5 months** from approval to company-wide availability, with security hardening deliverable within the first few weeks.
+
+== Benefits
+
+* **Time savings** — employees get instant answers instead of searching or waiting on HR/IT.
+* **Consistency** — everyone gets the same, up-to-date answer sourced from the official document.
+* **Reduced support load** — fewer repetitive questions to HR/IT teams.
+* **Trust & compliance** — answers are traceable to source documents, access is controlled, and activity is auditable.
+* **Scalable foundation** — built to grow with the company, including potential expansion to more document types and departments.
+
+== Investment Considerations
+
+* Ongoing AWS infrastructure costs (compute, database, storage) — scaled to actual usage.
+* AI service costs (question-answering and search) — usage-based, with caching and rate-limiting planned to control spend.
+* One-time engineering effort for the security/cloud migration described above.
+
+== Recommendation
+
+Approve the phased migration to AWS as outlined, beginning immediately with **Phase 1 (Security Hardening)** given the current proof-of-concept has known security gaps that should not be exposed to broader use in its present form.
+
+TIP: For full technical architecture, security control details, and engineering roadmap, see the companion document `0-enterprise-rag.adoc`.

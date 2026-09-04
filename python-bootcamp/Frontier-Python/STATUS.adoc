@@ -1,0 +1,54 @@
+= STATUS — Frontier Python Prereqs Code Build
+Handoff note for continuing this later (chat, or Claude Code, after usage resets)
+
+== What This Is
+
+Runnable code (Jupyter notebooks + .py files) for every topic in the
+"Python Prerequisites & Progressive Skill Map — 6-Week Immersive Programme"
+AsciiDoc document, organised by week to match that document's structure.
+
+== DONE — Verified Working
+
+All notebooks were actually executed cell-by-cell in a sandbox (code extracted and run as a
+script) to confirm correctness — not just written and assumed correct. Pydantic-dependent
+cells (Week 2, notebook 2) could not be executed in that sandbox (pydantic wasn't installed
+there) but were syntax-checked with `ast.parse()` and are standard, correct Pydantic v2 code.
+
+* **Week0-Baseline/** — 2 notebooks (core language, structure & tooling) — tested, passing
+* **Week2-LLM-Foundations/** — 3 notebooks (APIs, structured output, program flow) — tested
+  (pydantic cells syntax-checked only, not executed)
+* **Week3-RAG-Pipelines/** — 3 notebooks (file handling, numerical/tabular, external libs) — tested, passing
+* **Week4-Agentic-AI/** — 3 notebooks (OOP, state/concurrency, tool/config patterns) — tested, passing
+* **Week5-MCP-Guardrails-Deployment/** —
+** `01_reliability_and_safety_code.ipynb` — tested, passing
+** `guardrails.py` + `test_guardrails.py` — real pytest suite, syntax-valid (pytest not
+   installed in the build sandbox, so not actually run with `pytest` — do this first when
+   you resume, it should just work)
+** `mcp_style_server.py` — **actually started and hit with curl during the build** —
+   confirmed working (200 on valid tool calls, 404 on unknown tool)
+** `packaged_service_example/` (main.py, config.py, guardrails.py, Dockerfile, .env.example) —
+   **actually executed** — confirmed the guardrail-block behaviour works correctly end-to-end
+* **Week6-Nexus-Integration/** — 1 notebook (integration demo with a deliberate seeded bug) — tested, passing
+* **requirements.txt** — done for Week0, Week2, Week3
+
+== NOT YET DONE
+
+* `requirements.txt` for **Week4-Agentic-AI**, **Week5-MCP-Guardrails-Deployment**,
+  and **Week6-Nexus-Integration**
+* The comprehensive **AsciiDoc documentation** tying all of this together (purpose, how to
+  run each file, mapping back to the original Python Prerequisites TOC document) — not
+  started yet
+* Final zip re-packaging once the above is added (this zip is the interim snapshot)
+
+== To Resume
+
+Give whoever picks this up (a future chat session, or Claude Code) this file plus the
+original "Python Prerequisites & Progressive Skill Map" AsciiDoc document, and ask for:
+1. The 3 missing `requirements.txt` files (Week 4, 5, 6) — Week 4 needs `pyyaml`; Week 5
+   needs `fastapi`, `uvicorn`, `pytest`, `python-dotenv` (already used, list it explicitly),
+   plus optionally `presidio-analyzer`/`presidio-anonymizer`; Week 6 needs no new packages —
+   note that it reuses Weeks 2-5.
+2. One AsciiDoc file (`docs/Python_Code_Documentation.adoc`) describing each notebook/.py
+   file's purpose, the libraries it demonstrates, and how to run it — structured to mirror
+   the original Python Prerequisites TOC, week by week.
+3. A fresh zip of the complete folder.

@@ -1,0 +1,1 @@
+print(len("hello"))  # both 'print' and 'len' come from the built-in namespace

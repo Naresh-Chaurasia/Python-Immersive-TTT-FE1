@@ -1,0 +1,89 @@
+= Flow 2: LangChain Agent with Wikipedia Tool
+
+[mermaid]
+....
+%%{init: {"theme": "default", "themeVariables": {"fontSize": "24px"}, "sequence": {"actorFontSize": 20, "actorFontWeight": "bold", "noteFontSize": 18, "messageFontSize": 18}}}%%
+
+
+
+sequenceDiagram
+    autonumber
+    actor User
+    participant ST as Streamlit App<br/>(mcp_client_stdio.py)
+    participant Agent as LangChain Agent
+    participant LLM as GPT-4o (OpenAI API)
+    participant MCPC as MultiServerMCPClient
+    participant Sub as mcp_server_stdio.py<br/>(spawned subprocess, stdio)
+    participant Wiki as Wikipedia API
+
+    Note over ST: Streamlit reruns the whole script<br/>on every interaction
+
+    rect rgb(240,240,255)
+    Note over ST,Sub: Rerun #1 - initial page load
+    ST->>MCPC: get_tools()
+    MCPC->>Sub: spawn "python3 mcp_server_stdio.py"
+    activate Sub
+    Sub->>Sub: Creating FastMCP server instance
+    Sub->>Sub: Processing ListToolsRequest
+    Sub-->>MCPC: tools: [wikipedia_search, ddg_search] (via stdout)
+    deactivate Sub
+    Note over Sub: subprocess exits
+    MCPC-->>ST: tools list
+    ST->>Agent: create_agent(llm, tools)
+    ST->>ST: render title + text_input
+    end
+
+    User->>ST: enters "who is narendra modi"
+
+    rect rgb(240,240,255)
+    Note over ST,Sub: Rerun #2 - triggered by task submission
+    ST->>MCPC: get_tools()  (module re-executed again)
+    MCPC->>Sub: spawn "python3 mcp_server_stdio.py"
+    activate Sub
+    Sub->>Sub: Creating FastMCP server instance
+    Sub->>Sub: Processing ListToolsRequest
+    Sub-->>MCPC: tools: [wikipedia_search, ddg_search]
+    deactivate Sub
+    Note over Sub: subprocess exits
+    MCPC-->>ST: tools list
+    end
+
+    ST->>Agent: agent.ainvoke({messages: task})
+    activate Agent
+
+    Agent->>LLM: chat.completions (question + tool schemas)
+    activate LLM
+    LLM-->>Agent: 200 OK - call wikipedia_search query is Narendra Modi
+    deactivate LLM
+
+    rect rgb(255,245,230)
+    Note over Agent,Wiki: Tool-invocation subprocess
+    Agent->>MCPC: invoke wikipedia_search tool
+    MCPC->>Sub: spawn "python3 mcp_server_stdio.py"
+    activate Sub
+    Sub->>Sub: Creating FastMCP server instance
+    Sub->>Sub: Processing CallToolRequest
+    Sub->>Sub: Entering method: wikipedia_search
+    Sub->>Wiki: wikipedia.summary("Narendra Modi", sentences=2)
+    activate Wiki
+    Wiki-->>Sub: summary text (~2.1s)
+    deactivate Wiki
+    Sub->>Sub: Exiting method: wikipedia_search
+    Sub->>Sub: Processing ListToolsRequest (adapter bookkeeping)
+    Sub-->>MCPC: tool result (via stdout)
+    deactivate Sub
+    Note over Sub: subprocess exits
+    MCPC-->>Agent: tool result (Wikipedia summary)
+    end
+
+    Agent->>LLM: chat.completions (question + tool result)
+    activate LLM
+    LLM-->>Agent: 200 OK - final natural-language answer
+    deactivate LLM
+
+    Agent-->>ST: response {messages: [...]}
+    deactivate Agent
+
+    ST->>ST: st.write(response)
+    ST->>User: st.write(final_output)
+....

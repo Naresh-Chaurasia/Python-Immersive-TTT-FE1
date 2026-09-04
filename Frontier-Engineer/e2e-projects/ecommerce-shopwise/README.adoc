@@ -1,0 +1,146 @@
+= SmartFind: AI-Powered Product Search with Flask, LangChain, and pgvector
+:toc:
+:toclevels: 3
+:icons: font
+:source-highlighter: highlight.js
+
+SmartFind is a full-stack AI application that enables intelligent product search using vector embeddings.
+Upload a CSV of products, and let the application store their embeddings in PostgreSQL using `pgvector`.
+Users can then perform OpenAI-powered semantic search to find the most relevant products using natural language queries.
+
+== Features
+
+* Upload and parse product CSV files with metadata
+* Generate embeddings using OpenAI embedding models
+* Store product metadata and vectors in PostgreSQL using `pgvector`
+* Perform semantic vector search with LangChain
+* Run the complete application using Docker and Docker Compose
+
+== Project Structure
+
+[source,text]
+----
+smartfind/
+├── app/
+│   ├── __init__.py              # App factory
+│   ├── api/
+│   │   ├── search.py            # Search API
+│   │   └── vectorization.py     # File upload and embedding logic
+│   ├── config.py                # Flask and environment configuration
+│   ├── database.py              # SQLAlchemy and PGVector initialization
+│   ├── models.py                # SQLAlchemy models
+│   ├── utils.py                 # Utility functions
+│   └── templates/
+│       └── index.html           # Frontend template
+├── init-db/
+│   └── init.sql                 # Database schema and index creation
+├── product_real_data.csv        # Sample product data
+├── .env                         # Environment variables
+├── Dockerfile                   # Flask application Docker configuration
+├── docker-compose.yml           # Multi-container configuration
+├── requirements.txt             # Python dependencies
+└── run.py                       # Flask application entry point
+----
+
+== How to Run
+
+=== 1. Clone the Repository
+
+[source,bash]
+----
+git clone https://github.com/yourname/smartfind.git
+cd smartfind
+----
+
+=== 2. Configure Environment Variables
+
+Update the `.env` file.
+
+[source,properties]
+----
+OPENAI_API_KEY=sk-...
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+----
+
+=== 3. Start the Application
+
+[source,bash]
+----
+docker-compose up --build
+----
+
+Once the containers have started, open the application in your browser.
+
+[source,text]
+----
+http://localhost:5000
+----
+
+== CSV Format
+
+The uploaded CSV file should follow the structure shown below.
+
+[cols="1,2,3,1,2,3",options="header"]
+|===
+|ID |Name |Description |Price |Category |Image URL
+
+|1
+|Apple Watch
+|Smart wearable device
+|299
+|Electronics
+|http://example.com/1
+
+|2
+|Leather Bag
+|Stylish and durable bag
+|150
+|Fashion
+|http://example.com/2
+|===
+
+== How It Works
+
+=== Upload
+
+* User uploads a product CSV file.
+* The application parses the CSV.
+* OpenAI generates embeddings for each product.
+* Product metadata and embeddings are stored in PostgreSQL.
+
+=== Database
+
+* Product information is stored in the `product_embeddings` table.
+* Vector embeddings are stored using the `pgvector` extension.
+* Vector indexes enable efficient similarity search.
+
+=== Search
+
+* User enters a natural language query.
+* OpenAI generates an embedding for the query.
+* LangChain's `PGVector` performs a similarity search.
+* The application returns the most relevant products.
+
+== Technology Stack
+
+* Flask
+* LangChain
+* OpenAI Embeddings
+* PostgreSQL
+* pgvector
+* SQLAlchemy
+* Docker
+* Docker Compose
+
+== Future Improvements
+
+* Add user authentication
+* Support advanced filters such as:
+** Price range
+** Product category
+** Brand
+* Migrate to the `langchain_postgres` PGVector implementation
+* Improve UI and user experience
+* Enhance validation and error handling
+* Add pagination for search results
+* Support hybrid search (keyword + vector search)

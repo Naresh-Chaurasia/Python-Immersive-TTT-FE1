@@ -1,0 +1,126 @@
+= 3-mcp-server-deepdive-functionality
+:toc: right
+
+----
+
+# Perform Operation using connectors.
+mcp dev local-server.py
+
+# Perform Operation using Claude.
+mcp install local-server.py
+
+# Can you take screenshot, and describe the image.
+mcp dev screen-server.py
+
+----
+
+
+##############################################
+
+---
+
+== Installing MCP Server in Claude
+
+This entry registers a local MCP (Model Context Protocol) server named `LocalNotes` so that a Claude client (Desktop or Code) knows how to launch it.
+
+[source,json]
+----
+"LocalNotes": {
+  "command": "/opt/homebrew/bin/uv",
+  "args": [
+    "run",
+    "--directory",
+    "/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-TTT/Frontier-Engineer/week4-mcp/3-mcp-server-deepdive-functionality",
+    "--frozen",
+    "--with",
+    "mcp[cli]",
+    "mcp",
+    "run",
+    "/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-TTT/Frontier-Engineer/week4-mcp/3-mcp-server-deepdive-functionality/local-server.py"
+  ]
+}
+----
+
+*Field Breakdown*
+
+`LocalNotes`::
+The server name, used as its identifier in the client's tool list.
+
+`command`::
+The executable used to launch the server -- here, `uv`, the Astral Python package/project manager, installed via Homebrew on Apple Silicon (`/opt/homebrew`).
+
+`args`::
+The argument list passed to `uv`:
++
+--
+`run --directory <project-path> --frozen`::: Runs a command inside the given project directory using `uv run`. `--frozen` uses the lockfile as-is, without re-resolving dependencies.
+`--with mcp[cli]`::: Ensures the `mcp` package (with CLI extras) is available in the ephemeral environment, even if not declared as a project dependency.
+`mcp run <script-path>`::: The command actually executed -- the `mcp` CLI's `run` subcommand, pointed at `local-server.py`, which starts that script as an MCP server (typically over stdio).
+--
+
+*Summary*
+
+TIP: Each time this client starts, `uv` spins up an isolated Python environment inside the `3-mcp-server-deepdive-functionality` project folder, guarantees the `mcp` CLI is present, and runs `local-server.py` as an MCP server via `mcp run`. The server then exposes its defined tools (note-adding and note-reading) to the Claude client.
+
+
+##############################################
+
+---
+
+== MCP Server Startup and Handshake - Sequence Diagram
+
+[mermaid]
+....
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '18px'}, 'sequence': {'actorFontSize': 16, 'actorFontWeight': 'bold', 'noteFontSize': 14, 'messageFontSize': 16, 'wrap': true}}}%%
+
+sequenceDiagram
+    autonumber
+    participant User as Naresh (chat)
+    participant Claude as Claude Client<br/>(MCP host/plumbing)
+    participant LLM as LLM<br/>(reasoning, inside Claude Desktop)
+    participant OS as OS / PATH
+    participant UV as uv (process launcher)
+    participant Server as LocalNotes Server<br/>(local-server.py / FastMCP)
+
+    Note over Claude,Server: Startup (each session)
+    Claude->>Claude: Initializing server...
+    Claude->>Claude: Era probe verdict: legacy<br/>(exec lane pinned)
+    Claude->>OS: Resolve PATH for spawning process
+    OS-->>Claude: PATH list (19 entries, incl. /opt/homebrew/bin)
+    Claude->>UV: spawn: uv run --directory PROJECT_DIR --frozen<br/>--with mcp[cli] mcp run local-server.py
+    UV->>UV: Build ephemeral env from lockfile (--frozen)<br/>ensure mcp[cli] present
+    UV->>Server: exec: mcp run local-server.py
+    Server->>Server: FastMCP("LocalNotes") instance starts<br/>registers tools: add_note_to_file, read_notes
+    Server-->>Claude: stdio connection established
+    Claude-->>Claude: Server started and connected successfully
+
+    Note over Claude,Server: MCP Handshake (JSON-RPC over stdio)
+    Claude->>Server: method="initialize" (id=0)
+    Server-->>Claude: result (id=0)
+    Claude->>Server: notifications/initialized
+
+    Note over Claude,Server: Capability Discovery
+    Claude->>Server: method="tools/list" (id=1)
+    Claude->>Server: method="prompts/list" (id=2)
+    Claude->>Server: method="resources/list" (id=3)
+    Server->>Server: Processing ListToolsRequest
+    Server-->>Claude: result (id=1) → [add_note_to_file, read_notes]
+    Server->>Server: Processing ListPromptsRequest
+    Server-->>Claude: result (id=2) → []
+    Server->>Server: Processing ListResourcesRequest
+    Server-->>Claude: result (id=3) → []
+
+    Note over Claude,LLM: Tool schemas from tools/list are folded<br/>into the LLM's context for this conversation
+
+    Note over LLM,Server: Runtime tool call (example, not in logs)
+    User->>Claude: Types message: "write hello to file"
+    Claude->>LLM: Forwards message + tool schemas as context
+    LLM->>LLM: Decides a tool call is needed,<br/>picks add_note_to_file, builds args
+    LLM->>Claude: Requests tool call: add_note_to_file(content)
+    Claude->>Server: tools/call add_note_to_file(content)
+    Server->>Server: open notes.txt (append mode), write content
+    Server-->>Claude: result: "Content appended to notes.txt."
+    Claude-->>LLM: Tool result returned as context
+    LLM->>LLM: Composes final reply using the tool result
+    LLM-->>Claude: "Got it, I've added that to your notes."
+....

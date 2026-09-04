@@ -1,0 +1,4 @@
+# Week 2 — LLM Foundations & Prompt Engineering
+python-dotenv==1.0.1      # .env file loading (01_working_with_apis.ipynb)
+requests==2.32.3          # HTTP calls to real LLM APIs (pattern shown in 01_working_with_apis.ipynb)
+pydantic==2.9.2           # structured output / validation (02_structured_output_foundations.ipynb)

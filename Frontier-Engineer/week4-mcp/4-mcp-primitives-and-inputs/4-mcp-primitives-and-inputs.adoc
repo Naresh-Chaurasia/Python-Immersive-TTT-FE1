@@ -1,0 +1,5 @@
+= 4-mcp-primitives-and-inputs
+
+> Open Claude and click on + to get the list of prompts / resources.
+
+> Visual studio + cline + adding my custom MCP server

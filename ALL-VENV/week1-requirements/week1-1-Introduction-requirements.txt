@@ -1,0 +1,6 @@
+python-dotenv
+anthropic
+pydantic
+langchain
+langchain-anthropic
+numpy

@@ -1,0 +1,312 @@
+= The Classifier Agent
+:toc: right
+
+How `classifier_agent` (in `agents.py`) turns raw ticket text into a
+structured classification, and how that classification drives the rest
+of the SupportPilot pipeline.
+
+##############################################
+
+---
+
+== What it does
+
+The classifier agent is the **first step** of the pipeline
+(`pipeline.py::run_ticket`). It takes the raw, free-text ticket a
+customer wrote and turns it into a structured, typed record:
+
+[cols="1,3", options="header"]
+|===
+| Field | Meaning
+
+| `issue_type`
+| One of 8 fixed categories (`order_status`, `refund_request`, `damaged_item`, `payment_issue`, `account_access`, `fraud_suspected`, `general_inquiry`, `complaint_escalation`)
+
+| `urgency`
+| `low` \| `medium` \| `high` \| `critical`
+
+| `sentiment`
+| `neutral` \| `frustrated` \| `angry` \| `satisfied`
+
+| `confidence`
+| A float 0-1: how sure the classifier is about `issue_type`
+
+| `extracted_order_id` / `extracted_customer_id`
+| Best-effort IDs pulled out of the ticket text, e.g. `ORD0042`, `CUST001`
+
+| `summary`
+| First 140 chars of the ticket text, used later as a knowledge-base query
+|===
+
+Everything downstream — account lookup, knowledge retrieval, drafting,
+and the escalation decision — reads from this one structured object.
+Nothing else in the pipeline re-reads the raw ticket text again after
+this step.
+
+== Where the code lives
+
+* `agents.py::classifier_agent()` — thin wrapper called by the pipeline; logs the result and returns it.
+* `llm_client.py::classify_ticket()` — routes to mock or live mode based on `SUPPORTPILOT_MODE`.
+* `llm_client.py::mock_classify()` — the actual mock-mode logic explained below.
+* `models.py::TicketClassification` — the Pydantic schema the output is validated against right after classification (`pipeline.py`, step "pydantic_validation").
+
+== Two modes, one contract
+
+Both modes must return a dict shaped like `TicketClassification`. That
+contract is what lets the rest of the pipeline stay identical whether
+you're running fully offline or against a real model.
+
+[cols="1,3", options="header"]
+|===
+| Mode | How it classifies
+
+| `mock` (default)
+| Deterministic keyword/regex heuristics — no network call, no API key, same input always gives the same output. This is `mock_classify()`.
+
+| `live`
+| Sends the ticket text to Claude with a system prompt that demands JSON matching the schema, then `json.loads()`s the reply. Requires `SUPPORTPILOT_MODE=live` and `ANTHROPIC_API_KEY`.
+|===
+
+The rest of this doc focuses on **mock mode**, since that's what runs
+by default and what the test suite (`test_tickets.py`) relies on.
+
+== How `mock_classify` works, step by step
+
+.`llm_client.py::mock_classify()`
+[source,python]
+----
+def mock_classify(ticket_id: str, ticket_text: str) -> dict:
+    text = ticket_text.lower()
+    word_count = len(text.split())
+    default_confidence = 0.5 if word_count < 6 else 0.82
+    issue_type, confidence = "general_inquiry", default_confidence
+
+    for pattern, itype, conf in _KEYWORD_MAP:
+        if re.search(pattern, text):
+            issue_type, confidence = itype, conf
+            break
+    ...
+----
+
+=== Step 1 — Normalize and set a baseline
+
+The ticket text is lowercased, and a **default** `issue_type` of
+`general_inquiry` is assumed with a confidence that depends on ticket
+length:
+
+* Fewer than 6 words -> `confidence = 0.5` (too short to be sure — this is
+  what feeds the low-confidence escalation gate for ambiguous tickets).
+* 6+ words -> `confidence = 0.82` (a clear, well-formed sentence that just
+  doesn't match a known category is a legitimate general inquiry).
+
+=== Step 2 — First matching keyword pattern wins
+
+`_KEYWORD_MAP` is an **ordered** list of `(regex_pattern, issue_type, confidence)`
+tuples, checked top to bottom. The first pattern that matches the ticket
+text overrides the default `issue_type`/`confidence`, and the loop stops
+(`break`) — order matters, because a ticket could technically match more
+than one pattern.
+
+[source,python]
+----
+_KEYWORD_MAP = [
+    (r"don'?t recognize|didn'?t make this|unauthorized transaction|not my transaction|"
+     r"not sure (it|this) was me|wasn'?t me|not sure i made|don'?t think i made|"
+     r"(double check|make sure).*(charge|transaction)", "fraud_suspected", 0.9),
+    (r"charged twice|double charged|duplicate charge", "payment_issue", 0.9),
+    (r"payment failed|money (was )?deducted|debited but", "payment_issue", 0.85),
+    (r"manager|legal action|consumer court|media|news", "complaint_escalation", 0.9),
+    (r"refund", "refund_request", 0.85),
+    (r"damaged|broken|defective", "damaged_item", 0.85),
+    (r"where is my order|track my order|order status|not delivered yet", "order_status", 0.9),
+    (r"locked out|can'?t log ?in|reset password|account access", "account_access", 0.85),
+]
+----
+
+`fraud_suspected` is checked **first**, deliberately, so that hedged or
+softened phrasing ("just wanted to double check, I'm not sure it was
+me") still matches before a more generic pattern could grab it. This
+matters a lot for the escalation logic (see below).
+
+=== Step 3 — Sentiment, from separate word lists
+
+[source,python]
+----
+_ANGRY_WORDS = r"furious|unacceptable|ridiculous|scam|worst|disgusted|angry"
+_FRUSTRATED_WORDS = r"frustrat|annoyed|disappointed|not happy"
+----
+
+Checked independently of `issue_type` — a ticket can be, say, a
+`refund_request` *and* `angry` at the same time.
+
+=== Step 4 — Urgency, derived from issue_type + sentiment
+
+[source,python]
+----
+if issue_type in ("fraud_suspected", "complaint_escalation") or sentiment == "angry":
+    urgency = "critical" if sentiment == "angry" else "high"
+elif issue_type in ("payment_issue", "damaged_item"):
+    urgency = "high"
+else:
+    urgency = "medium" if issue_type != "order_status" else "low"
+----
+
+Urgency is not classified directly — it's a small decision tree over
+the two values already computed. Fraud/complaint categories are never
+"low" urgency; a merely-angry customer on any other issue is still
+bumped to "high"/"critical".
+
+=== Step 5 — Extract order/customer IDs by pattern
+
+[source,python]
+----
+order_match = re.search(r"ORD\d{3,}", ticket_text, re.IGNORECASE)
+cust_match = re.search(r"CUST\d{3,}", ticket_text, re.IGNORECASE)
+----
+
+Simple regex lookups against the *original* (not lowercased) text for
+IDs like `ORD0042` or `CUST001`, if the customer happened to mention one.
+Used later by `agents.get_relevant_order_amount()` to find the specific
+order a refund request is about.
+
+== Worked examples (real output from the code)
+
+These are actual outputs captured by running `llm_client.mock_classify()`
+directly — not hand-written examples.
+
+=== Example 1 — Clear order-status question
+
+[source]
+----
+Input:  "Hi, can you tell me the status of my recent order? It hasn't arrived yet."
+
+Output: {
+  "issue_type": "general_inquiry",
+  "urgency": "medium",
+  "sentiment": "neutral",
+  "confidence": 0.82
+}
+----
+
+Interesting and worth calling out: this ticket clearly *is* about order
+status to a human, but it doesn't literally contain the phrase "order
+status", "track my order", "where is my order", or "not delivered yet"
+— it says "the *status* of my recent *order*" (words split apart) and
+"hasn't *arrived* yet" (different word than "delivered"). Because no
+`_KEYWORD_MAP` pattern matches, it falls through to the `general_inquiry`
+default. This is a good, honest illustration of why the README calls
+mock mode "keyword regexes, not a real model" — a live LLM call would
+almost certainly classify this correctly as `order_status`, while the
+regex heuristic doesn't generalize past its known phrasings.
+
+=== Example 2 — Fraud, stated directly
+
+[source]
+----
+Input:  "There's a transaction on my account that I don't recognize at all."
+
+Output: {
+  "issue_type": "fraud_suspected",
+  "urgency": "high",
+  "sentiment": "neutral",
+  "confidence": 0.9
+}
+----
+
+Matches `don'?t recognize` in the first `_KEYWORD_MAP` pattern.
+
+=== Example 3 — The same fraud case, softened phrasing
+
+[source]
+----
+Input:  "Hey, quick one - I noticed a small charge on my account, just wanted to
+         double check, I'm not sure it was me."
+
+Output: {
+  "issue_type": "fraud_suspected",
+  "urgency": "high",
+  "sentiment": "neutral",
+  "confidence": 0.9
+}
+----
+
+Same classification as Example 2, even though the wording is much more
+casual and hedged. This matches on `(double check|make sure).*(charge|
+transaction)` and `not sure (it|this) was me` in the same fraud pattern.
+This pair (`test_tickets.py` cases 4 and 5) exists specifically to prove
+a customer can't dodge the fraud escalation by rephrasing — because the
+*classifier* catches both phrasings as the same `issue_type`, the
+downstream hard-escalation gate in `escalation_rules.py` (which always
+escalates `fraud_suspected` regardless of confidence) fires identically
+for both.
+
+=== Example 4 — Too short to be confident
+
+[source]
+----
+Input:  "hey issue"
+
+Output: {
+  "issue_type": "general_inquiry",
+  "urgency": "medium",
+  "sentiment": "neutral",
+  "confidence": 0.5
+}
+----
+
+Only 2 words, so `word_count < 6` sets `confidence = 0.5` — below the
+`CONFIDENCE_THRESHOLD = 0.75` in `escalation_rules.py`. This ticket will
+be escalated for being too ambiguous to auto-resolve, not because of its
+`issue_type`.
+
+=== Example 5 — Angry customer wanting a manager
+
+[source]
+----
+Input:  "This is absolutely unacceptable, I am furious about how this has been
+         handled, I want a manager."
+
+Output: {
+  "issue_type": "complaint_escalation",
+  "urgency": "critical",
+  "sentiment": "angry",
+  "confidence": 0.9
+}
+----
+
+`manager` matches the `complaint_escalation` pattern, `furious` and
+`unacceptable` match `_ANGRY_WORDS`. Because `sentiment == "angry"`,
+`urgency` is bumped all the way to `critical` (Step 4's first branch).
+
+== How the output flows downstream
+
+[source]
+----
+classifier_agent(ticket_id, ticket_text)
+        |
+        v
+TicketClassification(**result)          # models.py -- schema validation
+        |
+        +--> account_lookup_agent(customer_id)          # uses extracted_customer_id as a fallback
+        +--> knowledge_retrieval_agent(f"{issue_type} {summary}")   # issue_type + summary become the KB search query
+        +--> drafting_agent(classification, ...)        # opener tone depends on `sentiment`
+        +--> validation_agent(draft, ..., classification)
+        +--> escalation_rules.decide_escalation(
+                 issue_type=..., sentiment=..., urgency=...,
+                 confidence=..., order_amount=...)       # the hard/soft escalation gates
+----
+
+In short: `issue_type` and `confidence` decide *whether* a ticket can be
+auto-resolved at all (the hard-category and low-confidence gates in
+`escalation_rules.py`), while `sentiment` shapes how the drafted response
+opens, and `summary` becomes the text query for policy retrieval.
+
+== Key takeaway
+
+The classifier agent's job is narrow and mechanical by design: turn free
+text into a small, typed decision object as early as possible, so every
+other agent and the escalation logic can operate on structured fields
+instead of re-parsing prose. In mock mode that's done with ordered regex
+rules; in live mode the same job is handed to an LLM with a strict JSON
+schema — either way, the rest of the pipeline never has to know which one
+ran.
