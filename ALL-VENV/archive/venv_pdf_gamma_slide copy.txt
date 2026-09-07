@@ -1,0 +1,4 @@
+anthropic>=0.40.0
+requests>=2.31.0
+jupyter>=1.0.0
+nbformat>=5.10.0
