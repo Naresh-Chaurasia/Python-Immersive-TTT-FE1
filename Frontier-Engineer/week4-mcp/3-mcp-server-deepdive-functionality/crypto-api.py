@@ -10,14 +10,15 @@ def get_cryptocurrency_price(crypto: str) -> str:
     Args:
         crypto: symbol of the cryptocurrency (e.g., 'bitcoin', 'ethereum').
     """
+    crypto = crypto.strip().lower()
     try:
         # Use CoinGecko API to fetch current price in USD
         url = f"https://api.coingecko.com/api/v3/simple/price"
-        params = {"ids": crypto.lower(), "vs_currencies": "usd"}
+        params = {"ids": crypto, "vs_currencies": "usd"}
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        price = data.get(crypto.lower(), {}).get("usd")
+        price = data.get(crypto, {}).get("usd")
         if price is not None:
             return f"The price of {crypto} is ${price} USD."
         else:
