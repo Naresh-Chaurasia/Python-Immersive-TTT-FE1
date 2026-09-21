@@ -1,0 +1,105 @@
+= Running BankForge Locally (No Docker)
+
+Steps to run the three MCP servers directly on your machine, without
+Docker Compose.
+
+== 1. Create a virtual environment
+
+[source,bash]
+----
+cd bankforge
+python3 -m venv venv
+source venv/bin/activate
+----
+
+Keeps dependencies isolated from your system Python.
+
+== 2. Install dependencies
+
+[source,bash]
+----
+pip install -r bankforge-requirements.txt
+----
+
+Installs `mcp` and `pydantic`, the only two runtime dependencies.
+
+== 3. Seed the database
+
+[source,bash]
+----
+python3 database.py
+----
+
+Creates and seeds `neobank.db` (SQLite) in the project root.
+
+== 4. (Optional) Verify business logic first
+
+[source,bash]
+----
+python3 run_local_demo.py
+----
+
+Exercises scoped access, compliance checks, and guardrails directly
+(no MCP transport needed) — a fast sanity check before running real servers.
+
+== 5. Set up environment variables (optional)
+
+[source,bash]
+----
+cp .env.example .env
+----
+
+Defaults (`MCP_TRANSPORT=stdio`, `LOG_LEVEL=DEBUG`) work fine as-is for
+local, non-Docker use.
+
+== 6. Run each server (separate terminals)
+
+Each server defaults to `stdio` transport, suited for a single MCP client
+(e.g. Claude Desktop) launching it as a subprocess. To run them as
+standalone local processes instead, use `streamable-http` with each
+server's own port:
+
+[source,bash]
+----
+# Terminal 1
+python3 servers/accounts_server.py --transport streamable-http --port 8001 --health-port 8011
+
+# Terminal 2
+python3 servers/products_server.py --transport streamable-http --port 8002 --health-port 8012
+
+# Terminal 3
+python3 servers/compliance_comms_server.py --transport streamable-http --port 8003 --health-port 8013
+----
+
+Each server seeds/reuses the same `neobank.db` and starts its own
+health-check endpoint.
+
+== 7. Check health endpoints
+
+[source,bash]
+----
+curl http://localhost:8011/health   # accounts_server
+curl http://localhost:8012/health   # products_server
+curl http://localhost:8013/health   # compliance_comms_server
+----
+
+Each should return `{"status": "ok", "service": "...", "uptime_seconds": ...}`.
+
+== 8. (Alternative) Wire into Claude Desktop via stdio
+
+[source,bash]
+----
+python3 servers/accounts_server.py --transport stdio
+----
+
+Or configure Claude Desktop with `claude_desktop_config.example.json`
+(copy it to Claude Desktop's config location, update absolute paths) so
+Claude Desktop launches the servers itself over stdio.
+
+== 9. Run tests
+
+[source,bash]
+----
+pip install pytest
+python3 -m pytest tests/ -v
+----

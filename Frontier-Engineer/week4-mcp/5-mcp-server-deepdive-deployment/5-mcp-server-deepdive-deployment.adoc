@@ -1,0 +1,205 @@
+= MCP Server Deepdive: Deployment
+:toc:
+:toclevels: 2
+:icons: font
+:source-highlighter: highlight.js
+
+A minimal Model Context Protocol (MCP) server built with `FastMCP`, packaged
+with `uv`, and exposed as an installable console script (`mcp-server`).
+
+== Background
+
+=== What is MCP?
+
+MCP (Model Context Protocol) is a standard that lets an AI model (Claude,
+etc.) call external tools/data sources in a uniform way. You write one
+**MCP server** that exposes "tools" (plain Python functions), and any
+MCP-compatible client (Claude Desktop, Cline, MCP Inspector) can discover
+and call them automatically -- no custom integration code per tool.
+
+=== What is FastMCP?
+
+`FastMCP` is a class from the official `mcp` SDK (dependency:
+`mcp[cli]>=1.9.0`) that hides all the protocol plumbing. You create one
+instance and decorate functions as tools; FastMCP reads the function's type
+hints/docstring to auto-generate the JSON schema the AI client needs.
+
+== Project Structure
+
+[source,text]
+----
+5-mcp-server-deepdive-deployment/
+├── pyproject.toml           # project metadata, deps, console script entry point
+├── uv.lock                  # locked dependency versions (like package-lock.json)
+├── .python-version          # pins Python 3.10 for tools like pyenv/uv
+├── main.py                  # unused leftover boilerplate from `uv init`
+└── src/mcpserver/
+    ├── __init__.py           # empty, marks folder as a Python package
+    ├── __main__.py           # entry point -> my_mcp.run()
+    └── deployment.py         # FastMCP server instance + tools (e.g. `add`)
+----
+
+== File Walkthrough
+
+`pyproject.toml`::
+The project's identity card (replaces old `setup.py`). Declares the
+package name/version, the single dependency (`mcp[cli]`), and registers a
+CLI command via `[project.scripts]`:
++
+[source,toml]
+----
+[project.scripts]
+mcp-server = "mcpserver.__main__:main"
+----
++
+This means once installed, typing `mcp-server` in a terminal runs
+`main()` from `mcpserver/__main__.py` -- the same mechanism tools like
+`pytest` or `black` use to become terminal commands. The `src` layout
+(`package-dir`/`packages.find` pointing at `src/`) is a common convention
+to avoid accidentally importing local files instead of the installed
+package.
+
+`src/mcpserver/deployment.py`::
+The actual server:
++
+[source,python]
+----
+from mcp.server.fastmcp import FastMCP
+
+my_mcp = FastMCP("Demo")        # create a server named "Demo"
+
+@my_mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+----
++
+`FastMCP("Demo")` creates the server object ("Demo" is just its display
+name). `@my_mcp.tool()` is a decorator that registers the function below
+it as a callable tool -- FastMCP builds the JSON schema for it
+automatically from the type hints and docstring.
+
+`src/mcpserver/__main__.py`::
++
+[source,python]
+----
+from mcpserver.deployment import my_mcp
+
+def main():
+    my_mcp.run()      # starts the server, waits for an MCP client to connect
+
+if __name__ == "__main__":
+    main()
+----
++
+This runs whenever the `mcp-server` command (registered in
+`pyproject.toml`) is executed.
+
+`main.py`::
+Leftover boilerplate from `uv init` (`print("Hello from ...")`). Not used
+by the real server -- dead code, safe to ignore or delete.
+
+`src/mcp_server_deepdive_deployment.egg-info/`::
+Auto-generated build metadata, created by `uv sync`/install. Not source
+code; already excluded by the repo's root `.gitignore` (`*.egg-info/`).
+
+== Fixed Issue
+
+`deployment.py` originally decorated tools with `@mcp.tool()`, but the
+`FastMCP` instance was named `my_mcp`, which raised `NameError: name 'mcp'
+is not defined` as soon as the module was imported. This has been fixed --
+the decorator now reads `@my_mcp.tool()`. Verified working:
+
+[source,bash]
+----
+$ uv run python -c "from mcpserver.deployment import my_mcp; print(my_mcp.name)"
+Demo
+----
+
+== The `uv` Tool
+
+`uv` is a fast, modern Python package/project manager (like `pip` + `venv`
++ `poetry` combined). Commands used in this project:
+
+[cols="1,3", options="header"]
+|===
+| Command | What it does
+
+| `uv sync`
+| Reads `pyproject.toml` + `uv.lock`, creates an isolated `.venv/`, and
+installs the exact pinned dependency versions into it.
+
+| `uv run <cmd>`
+| Runs `<cmd>` using this project's virtual environment automatically --
+no need to manually activate `.venv` first.
+
+| `uv run mcp dev src/mcpserver/deployment.py`
+| Launches the MCP Inspector (browser UI) so you can manually call tools
+(e.g. `add(2, 3)`) and see results, without needing a real AI client.
+
+| `uv run mcp-server`
+| Runs the installed console-script command, starting the real server for
+use by an AI client.
+
+| `uv build`
+| Packages the project into a `.whl` and `.tar.gz` under `dist/` --
+installable artifacts, same kind of files you'd `pip install`.
+|===
+
+== Setup
+
+[source,bash]
+----
+uv sync
+----
+
+== Run
+
+[source,bash]
+----
+# Dev mode with MCP Inspector
+uv run mcp dev src/mcpserver/deployment.py
+
+# Run via the installed console script
+uv run mcp-server
+----
+
+== Package
+
+[source,bash]
+----
+uv build
+----
+
+Produces `dist/*.whl` and `dist/*.tar.gz`.
+
+== Packaging vs. Deployment vs. GitHub
+
+These are three separate concepts:
+
+* *Packaging* -- turning source code into an installable artifact
+  (`uv build`), so someone can `pip install` it instead of copying files.
+* *Deployment* (MCP context) -- making the server available to run, e.g.
+  registering `uv run mcp-server` in an MCP client's config (Claude
+  Desktop, Cline) so it launches the server as a subprocess.
+* *GitHub* -- plain version control (`git add`/`commit`/`push`), unrelated
+  to Python packaging. This project already lives inside the
+  `Python-Immersive-TTT-FE1` monorepo, which is already connected to
+  GitHub, so publishing here just means committing this folder into that
+  existing repo.
+
+== Publish to GitHub
+
+[source,bash]
+----
+git add Frontier-Engineer/week4-mcp/5-mcp-server-deepdive-deployment
+git commit -m "Add mcp-server-deepdive-deployment (week4-mcp)"
+git push origin main
+----
+
+== Recommended Order of Operations
+
+1. ✅ Fix the bug in `deployment.py` (`@mcp.tool()` -> `@my_mcp.tool()`) -- done.
+2. Test locally with the MCP Inspector (`uv run mcp dev ...`).
+3. (Optional) Package with `uv build` if you need a distributable artifact.
+4. Commit and push to GitHub.
