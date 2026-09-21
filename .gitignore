@@ -170,3 +170,5 @@ chroma-data/
 # Uploads / Data artifacts
 uploads/*.csv
 !uploads/product_real_data.csv
+
+CODE/*

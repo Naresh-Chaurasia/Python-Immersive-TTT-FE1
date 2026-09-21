@@ -1,0 +1,35 @@
+# Requirements for the notebooks in this folder:
+#   1-Digital-Twin.ipynb
+#   2-Agents-SDK-Tracing-Steaming-Tools-Memory.ipynb
+#   2.1-Email-Code-LLMs-Orchestration.ipynb
+#   2.2-LLMs-Orchestration-Output.ipynb
+#   3-Models-StructureOutput-Guardrails.ipynb
+#
+# Versions pinned to match the "Ed-Donner" venv
+# (Python-Immersive-AI-MAC/RnD/Agents-Ed-Donner/.venv_ed_donner, Python 3.12)
+
+python-dotenv==1.2.2
+openai==2.34.0
+pypdf==6.10.2
+ipython==9.13.0
+gradio==6.14.0
+requests==2.33.1
+pydantic==2.13.3
+langsmith==0.8.11
+
+# OpenAI Agents SDK (imported as `agents`) - the [viz] extra pulls in
+# graphviz, needed for agents.extensions.visualization.draw_graph
+openai-agents[viz]==0.15.1
+graphviz==0.21
+
+# NOTE: 3-Models-StructureOutput-Guardrails.ipynb also does
+#   `from messenger import send_email, push`
+# This is a local helper module (see
+# Python-Immersive-AI-MAC/RnD/Agents-Ed-Donner/2_openai/messenger.py in the
+# original Ed-Donner course repo) and is not a pip package - copy it
+# alongside the notebook if you want that cell to run.
+#
+# All other imports used (json, os, asyncio, smtplib, email.message,
+# importlib.metadata, pathlib) are part of the Python 3.10+ standard library
+# and need no separate installation.
+
