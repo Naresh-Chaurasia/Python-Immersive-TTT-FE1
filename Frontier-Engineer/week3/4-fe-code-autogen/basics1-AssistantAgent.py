@@ -1,3 +1,4 @@
+# Demonstrates a basic AutoGen AssistantAgent (using an OpenAI GPT-4o model client) answering a simple math question via a streamed Console conversation.
 import asyncio
 import os
 
