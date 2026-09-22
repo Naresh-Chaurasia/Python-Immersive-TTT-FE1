@@ -1,3 +1,4 @@
+# Demonstrates AutoGen AssistantAgent memory persistence: "Helper" learns a fact, its state is saved to memory.json and loaded into a second agent "BackupHelper", which then recalls the fact from the restored state.
 import asyncio
 import json
 import os

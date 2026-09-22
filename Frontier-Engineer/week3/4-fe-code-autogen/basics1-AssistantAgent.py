@@ -9,7 +9,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 import os
 from dotenv import load_dotenv
 
-load_dotenv("/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-AI-MAC/.env_rag")
+load_dotenv("/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-AI-MAC/.env")
 
 api_key = os.getenv("OPENAI_API_KEY")
 # print(api_key)

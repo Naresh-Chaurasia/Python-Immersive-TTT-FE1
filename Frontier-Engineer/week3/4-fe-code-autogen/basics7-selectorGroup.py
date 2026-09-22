@@ -1,3 +1,5 @@
+# Demonstrates a SelectorGroupChat where an LLM dynamically picks the next speaker among ResearcherAgent, WriterAgent, and CriticAgent to collaboratively research and write an article on solar power, stopping when the critic says "TERMINATE" or after 15 messages.
+
 import asyncio
 import os
 

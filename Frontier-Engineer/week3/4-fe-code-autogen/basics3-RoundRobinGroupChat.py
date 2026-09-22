@@ -1,3 +1,4 @@
+# Demonstrates a RoundRobinGroupChat between two AutoGen AssistantAgents ("MathTeacher" and "Student", both using GPT-4o) that take turns discussing multiplication, stopping after 6 messages, with the conversation streamed via Console.
 import asyncio
 import os
 
@@ -10,7 +11,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 import os
 from dotenv import load_dotenv
 
-load_dotenv("/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-AI-MAC/.env_rag")
+load_dotenv("/Users/nareshchaurasia/nc/PYTHON-ARCHITECT/Python-Immersive-AI-MAC/.env")
 
 api_key = os.getenv("OPENAI_API_KEY")
 # print(api_key)
