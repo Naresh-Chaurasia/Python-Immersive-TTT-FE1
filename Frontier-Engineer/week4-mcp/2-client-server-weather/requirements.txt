@@ -1,0 +1,7 @@
+# Requirements for:
+#   client.py           (MCP stdio client -> runs weather.py via "uv run weather.py")
+#   client-air-bnb.py   (MCP stdio client -> runs @openbnb/mcp-server-airbnb via npx)
+#   weather.py          (FastMCP server exposing get_weather tool)
+#   main.py             (no third-party deps)
+
+mcp[cli]<2   # ClientSession, StdioServerParameters, stdio_client, FastMCP
