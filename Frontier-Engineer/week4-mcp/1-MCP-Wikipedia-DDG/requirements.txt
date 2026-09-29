@@ -1,0 +1,16 @@
+# Requirements for:
+#   1-mcp_client_streamable_http.py  (Streamlit + LangChain MCP client)
+#   1-mcp_server_streamable-http.py  (FastMCP server exposing Wikipedia/DDG tools)
+
+# --- Client side ---
+streamlit               # Web UI for the agent (st.title, st.text_input, st.write)
+langchain                # langchain.agents.create_agent
+langchain-openai         # langchain_openai.ChatOpenAI
+langchain-mcp-adapters   # langchain_mcp_adapters.client.MultiServerMCPClient
+langgraph                # Agent graph runtime used internally by create_agent
+python-dotenv            # dotenv.load_dotenv (.env file loading)
+
+# --- Server side ---
+mcp[cli]                 # mcp.server.fastmcp.FastMCP (streamable-http transport)
+wikipedia                # wikipedia.summary() search tool
+duckduckgo-search        # duckduckgo_search.DDGS() search tool
